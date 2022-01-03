@@ -1,0 +1,28 @@
+# IDEs
+.idea/
+client/.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+client/.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+Session.vim
+*.undodir/
+
+## GO
+go.sum
+db/*
+kshoplist-server
+kshoplist-server.exe
+.env
+*.env*
+__debug_bin
+*.coverprofile
+*mocks/
