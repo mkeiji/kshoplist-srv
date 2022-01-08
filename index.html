@@ -23,8 +23,16 @@
                 if (!msg.value) {
                     return false;
                 }
-                const msgObj = {message: msg.value};
-                conn.send(JSON.stringify(msgObj));
+                const itemObj = {
+                    storeId: 1,
+                    name: msg.value
+                };
+                const req = {
+                    type: "Request",
+                    action: "POST",
+                    items: [itemObj]
+                }
+                conn.send(JSON.stringify(req));
                 msg.value = "";
                 return false;
             };
