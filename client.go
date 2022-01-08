@@ -10,9 +10,39 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type KmsgType string
+
+const (
+	REQ  KmsgType = "Request"
+	RESP KmsgType = "Response"
+)
+
+type Actions string
+
+const (
+	PUT    Actions = "PUT"
+	POST   Actions = "POST"
+	DELETE Actions = "DELETE"
+)
+
 type Kmsg struct {
-	Message string
+	Type   KmsgType `json:"type"`
+	Action Actions  `json:"action"`
+	Items  []Item   `json:"items"`
 }
+
+type Item struct {
+	Id      int    `json:"id"`
+	StoreId int    `json:"storeId"`
+	Name    string `json:"name"`
+}
+
+var mockList []Item = []Item{
+	{Id: 1, StoreId: 1, Name: "Hello"},
+	{Id: 2, StoreId: 2, Name: "World"},
+}
+
+var mockId int = 3
 
 const (
 	// Time allowed to write a message to the peer.
@@ -62,15 +92,75 @@ func (s subscription) readPump() {
 		}
 
 		// Todo: save to DB here
+		var newMsg []byte
 		var kmsg Kmsg
-		msgstr := string(msg)
-		kerr := json.Unmarshal([]byte(msgstr), &kmsg)
+		kmsgStr := string(msg)
+		kerr := json.Unmarshal([]byte(kmsgStr), &kmsg)
 		if kerr != nil {
 			fmt.Println(kerr)
 		}
 		fmt.Printf("\nreading: %+v\n", kmsg)
+		if kmsg.Type == REQ && kmsg.Action == POST {
+			item := kmsg.Items[0]
+			item.Id = mockId
+			mockId++
 
-		m := message{msg, s.list}
+			mockList = append(mockList, item)
+			fmt.Printf("\npostOnDb: %+v\n", mockList)
+			response := Kmsg{
+				Type:  RESP,
+				Items: mockList,
+			}
+			newMsg, _ = json.Marshal(response)
+		}
+		if kmsg.Type == REQ && kmsg.Action == PUT {
+			var updatedMockList []Item
+			newItem := kmsg.Items[0]
+			for _, i := range mockList {
+				if i.Id == newItem.Id {
+					updatedMockList = append(updatedMockList, Item{
+						Id:      i.Id,
+						StoreId: i.StoreId,
+						Name:    newItem.Name,
+					})
+				} else {
+					updatedMockList = append(updatedMockList, i)
+				}
+			}
+			mockList = updatedMockList
+
+			fmt.Printf("\nupdateDb: %+v\n", updatedMockList)
+			response := Kmsg{
+				Type:  RESP,
+				Items: updatedMockList,
+			}
+			newMsg, _ = json.Marshal(response)
+		}
+		if kmsg.Type == REQ && kmsg.Action == DELETE {
+			var updatedMockList []Item
+			newItem := kmsg.Items[0]
+			for index, i := range mockList {
+				if i.Id == newItem.Id {
+					updatedMockList = append(
+						updatedMockList[:index],
+						updatedMockList[index:]...,
+					)
+					fmt.Printf("\nHERE: %v\n", updatedMockList)
+				} else {
+					updatedMockList = append(updatedMockList, i)
+				}
+			}
+			mockList = updatedMockList
+
+			fmt.Printf("\nupdateDb: %+v\n", updatedMockList)
+			response := Kmsg{
+				Type:  RESP,
+				Items: updatedMockList,
+			}
+			newMsg, _ = json.Marshal(response)
+		}
+
+		m := message{newMsg, s.list}
 		h.broadcast <- m
 	}
 }
@@ -122,6 +212,15 @@ func serveWs(w http.ResponseWriter, r *http.Request, listId string) {
 	c := &connection{send: make(chan []byte, 256), ws: ws}
 	s := subscription{c, listId}
 	h.register <- s
+
+	// Read from Db and send current list state
+	welcomeMsg := Kmsg{
+		Type:  RESP,
+		Items: mockList,
+	}
+	msg, _ := json.Marshal(welcomeMsg)
+	c.write(websocket.TextMessage, msg)
+
 	go s.writePump()
 	go s.readPump()
 }
