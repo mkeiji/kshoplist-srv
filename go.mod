@@ -1,4 +1,4 @@
-module chatapp
+module kshoplistSrv
 
 go 1.16
 
