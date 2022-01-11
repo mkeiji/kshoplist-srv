@@ -1,9 +1,12 @@
-package models
+package services
 
 import (
 	"encoding/json"
 	"fmt"
+	"kshoplistSrv/constants"
 	e "kshoplistSrv/enums"
+	m "kshoplistSrv/models"
+	r "kshoplistSrv/repository"
 	"log"
 	"time"
 
@@ -11,33 +14,20 @@ import (
 )
 
 // consider using a DB
-var cacheList []Item = []Item{}
+var cacheList []m.Item = []m.Item{}
 var nextId int = 1
 
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 512
-)
-
 type Subscription struct {
-	Conn   *Connection
-	ListId string
+	Conn           *m.Connection
+	ListId         string
+	ItemRepository r.ItemRepository
 }
 
-func (this Subscription) OnConnInit(c *Connection) {
-	// Read from cache and send current list state
-	welcomeMsg := Kdata{
+func (this Subscription) OnConnInit(c *m.Connection) {
+	// get all items on first connection
+	welcomeMsg := m.Kdata{
 		Type:  e.RESP,
-		Items: cacheList,
+		Items: this.ItemRepository.GetAll(),
 	}
 	msg, _ := json.Marshal(welcomeMsg)
 	c.Write(websocket.TextMessage, msg)
@@ -50,9 +40,12 @@ func (this Subscription) ReadPump(h Hub) {
 		h.Unregister <- this
 		c.Ws.Close()
 	}()
-	c.Ws.SetReadLimit(maxMessageSize)
-	c.Ws.SetReadDeadline(time.Now().Add(pongWait))
-	c.Ws.SetPongHandler(func(string) error { c.Ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	c.Ws.SetReadLimit(constants.MaxMessageSize)
+	c.Ws.SetReadDeadline(time.Now().Add(constants.PongWait))
+	c.Ws.SetPongHandler(func(string) error {
+		c.Ws.SetReadDeadline(time.Now().Add(constants.PongWait))
+		return nil
+	})
 	for {
 		_, rawMsg, err := c.Ws.ReadMessage()
 		if err != nil {
@@ -62,7 +55,7 @@ func (this Subscription) ReadPump(h Hub) {
 			break
 		}
 		newMsg := this.handleRawMsg(rawMsg)
-		m := Message{newMsg, this.ListId}
+		m := m.Message{Data: newMsg, List: this.ListId}
 		h.Broadcast <- m
 	}
 }
@@ -70,7 +63,7 @@ func (this Subscription) ReadPump(h Hub) {
 // writePump pumps messages from the hub to the websocket connection.
 func (this *Subscription) WritePump() {
 	c := this.Conn
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(constants.PingPeriod)
 	defer func() {
 		ticker.Stop()
 		c.Ws.Close()
@@ -97,9 +90,8 @@ func (this *Subscription) WritePump() {
 --------------------------------------------------------------------------------*/
 // request handler
 func (this Subscription) handleRawMsg(msg []byte) []byte {
-	// Todo: save to DB here
 	var newMsg []byte
-	var kreq Kdata
+	var kreq m.Kdata
 
 	kmsgStr := string(msg)
 	kerr := json.Unmarshal([]byte(kmsgStr), &kreq)
@@ -125,62 +117,28 @@ func (this Subscription) handleRawMsg(msg []byte) []byte {
 	return newMsg
 }
 
-func (this Subscription) handlePost(kreq Kdata) []byte {
+func (this Subscription) handlePost(kreq m.Kdata) []byte {
 	item := kreq.Items[0]
-	item.Id = nextId
-	nextId++
-
-	cacheList = append(cacheList, item)
-	response := Kdata{
-		Type:  e.RESP,
-		Items: cacheList,
-	}
-	newMsg, _ := json.Marshal(response)
-	return newMsg
+	this.ItemRepository.Post(item)
+	return this.getDefaultResponse()
 }
 
-func (this Subscription) handlePut(kreq Kdata) []byte {
-	var updatedMockList []Item
+func (this Subscription) handlePut(kreq m.Kdata) []byte {
 	newItem := kreq.Items[0]
-	for _, i := range cacheList {
-		if i.Id == newItem.Id {
-			updatedMockList = append(updatedMockList, Item{
-				Id:      i.Id,
-				StoreId: i.StoreId,
-				Name:    newItem.Name,
-			})
-		} else {
-			updatedMockList = append(updatedMockList, i)
-		}
-	}
-	cacheList = updatedMockList
-
-	response := Kdata{
-		Type:  e.RESP,
-		Items: updatedMockList,
-	}
-	newMsg, _ := json.Marshal(response)
-	return newMsg
+	this.ItemRepository.Put(newItem)
+	return this.getDefaultResponse()
 }
 
-func (this Subscription) handleDelete(kreq Kdata) []byte {
-	var updatedMockList []Item
-	newItem := kreq.Items[0]
-	for index, i := range cacheList {
-		if i.Id == newItem.Id {
-			updatedMockList = append(
-				updatedMockList[:index],
-				updatedMockList[index:]...,
-			)
-		} else {
-			updatedMockList = append(updatedMockList, i)
-		}
-	}
-	cacheList = updatedMockList
+func (this Subscription) handleDelete(kreq m.Kdata) []byte {
+	itemToDelete := kreq.Items[0]
+	this.ItemRepository.Delete(itemToDelete)
+	return this.getDefaultResponse()
+}
 
-	response := Kdata{
+func (this Subscription) getDefaultResponse() []byte {
+	response := m.Kdata{
 		Type:  e.RESP,
-		Items: updatedMockList,
+		Items: this.ItemRepository.GetAll(),
 	}
 	newMsg, _ := json.Marshal(response)
 	return newMsg

@@ -1,13 +1,17 @@
-package models
+package services
+
+import (
+	m "kshoplistSrv/models"
+)
 
 // hub maintains the set of active connections and broadcasts messages to the
 // connections.
 type Hub struct {
 	// Registered connections.
-	Lists map[string]map[*Connection]bool
+	Lists map[string]map[*m.Connection]bool
 
 	// Inbound messages from the connections.
-	Broadcast chan Message
+	Broadcast chan m.Message
 
 	// Register requests from the connections.
 	Register chan Subscription
@@ -22,7 +26,7 @@ func (h *Hub) Run() {
 		case s := <-h.Register:
 			connections := h.Lists[s.ListId]
 			if connections == nil {
-				connections = make(map[*Connection]bool)
+				connections = make(map[*m.Connection]bool)
 				h.Lists[s.ListId] = connections
 			}
 			h.Lists[s.ListId][s.Conn] = true
