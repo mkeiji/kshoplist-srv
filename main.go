@@ -7,6 +7,7 @@ import (
 	s "kshoplistSrv/services"
 	"log"
 	"net/http"
+	"os"
 
 	appdb "kshoplistSrv/database"
 
@@ -46,7 +47,10 @@ func main() {
 		serveWs(c.Writer, c.Request, listId)
 	})
 
-	router.Run("0.0.0.0:8081")
+	err := router.Run(":" + os.Getenv("PORT"))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // serveWs handles websocket requests from the peer.
