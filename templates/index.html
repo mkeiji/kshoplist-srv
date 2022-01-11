@@ -40,7 +40,7 @@
             if (window["WebSocket"]) {
                 const params = window.location.href.split("/");
                 const roomId = params[params.length - 1];
-                        const uri = "ws://" + document.location.host + "/ws/" + roomId;
+                        const uri = "wss://" + document.location.host + "/ws/" + roomId;
                         console.log(uri);
                 conn = new WebSocket(uri);
                 conn.onclose = function (evt) {
