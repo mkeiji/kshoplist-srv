@@ -13,10 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// consider using a DB
-var cacheList []m.Item = []m.Item{}
-var nextId int = 1
-
 type Subscription struct {
 	Conn           *m.Connection
 	ListId         string
@@ -24,13 +20,10 @@ type Subscription struct {
 }
 
 func (this Subscription) OnConnInit(c *m.Connection) {
-	// get all items on first connection
-	welcomeMsg := m.Kdata{
-		Type:  e.RESP,
-		Items: this.ItemRepository.GetAll(),
-	}
-	msg, _ := json.Marshal(welcomeMsg)
-	c.Write(websocket.TextMessage, msg)
+	c.Write(
+		websocket.TextMessage,
+		this.getDefaultResponse(),
+	)
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -140,6 +133,9 @@ func (this Subscription) getDefaultResponse() []byte {
 		Type:  e.RESP,
 		Items: this.ItemRepository.GetAll(),
 	}
-	newMsg, _ := json.Marshal(response)
+	newMsg, err := json.Marshal(response)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return newMsg
 }
