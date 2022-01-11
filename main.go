@@ -3,32 +3,23 @@ package main
 import (
 	"fmt"
 	m "kshoplistSrv/models"
+	"kshoplistSrv/repository"
+	s "kshoplistSrv/services"
 	"log"
 	"net/http"
-	"time"
+
+	appdb "kshoplistSrv/database"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
+var appDb appdb.AppDb
 
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 512
-)
-
-var h = m.Hub{
+var h = s.Hub{
 	Broadcast:  make(chan m.Message),
-	Register:   make(chan m.Subscription),
-	Unregister: make(chan m.Subscription),
+	Register:   make(chan s.Subscription),
+	Unregister: make(chan s.Subscription),
 	Lists:      make(map[string]map[*m.Connection]bool),
 }
 
@@ -38,6 +29,9 @@ var upgrader = websocket.Upgrader{
 }
 
 func main() {
+	appDb.Init()
+	defer appdb.Db.Close()
+
 	go h.Run()
 
 	router := gin.New()
@@ -52,7 +46,7 @@ func main() {
 		serveWs(c.Writer, c.Request, listId)
 	})
 
-	router.Run("0.0.0.0:8080")
+	router.Run("0.0.0.0:8081")
 }
 
 // serveWs handles websocket requests from the peer.
@@ -68,7 +62,7 @@ func serveWs(w http.ResponseWriter, r *http.Request, listId string) {
 		return
 	}
 	c := &m.Connection{Send: make(chan []byte, 256), Ws: ws}
-	s := m.Subscription{Conn: c, ListId: listId}
+	s := s.Subscription{Conn: c, ListId: listId, ItemRepository: repository.NewItemRepository()}
 	h.Register <- s
 
 	s.OnConnInit(c)

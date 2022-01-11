@@ -1,6 +1,7 @@
 package models
 
 import (
+	"kshoplistSrv/constants"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -17,6 +18,6 @@ type Connection struct {
 
 // write writes a message with the given message type and payload.
 func (c *Connection) Write(mt int, payload []byte) error {
-	c.Ws.SetWriteDeadline(time.Now().Add(writeWait))
+	c.Ws.SetWriteDeadline(time.Now().Add(constants.WriteWait))
 	return c.Ws.WriteMessage(mt, payload)
 }
