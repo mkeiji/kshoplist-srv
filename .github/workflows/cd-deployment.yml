@@ -1,0 +1,19 @@
+name: Deployment
+on:
+    workflow_run:
+        workflows:
+            - Build
+        types:
+            - completed
+
+jobs:
+    deploy-app:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ secrets.K_SERVER }}
+                  username: ${{ secrets.K_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: ${{ secrets.DEPLOYMENT_SCRIPT }}
