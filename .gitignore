@@ -26,3 +26,4 @@ kshoplist-server.exe
 __debug_bin
 *.coverprofile
 *mocks/
+kshoplistSrv
