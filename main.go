@@ -35,7 +35,7 @@ func main() {
 
 	go h.Run()
 
-	router := gin.New()
+	router := gin.Default()
 	router.LoadHTMLFiles("templates/index.html")
 
 	router.GET("/list/:listId", func(c *gin.Context) {

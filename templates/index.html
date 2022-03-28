@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Chat Example</title>
+    <title>Test Connection</title>
     <script type="text/javascript">
         window.onload = function () {
             let conn;
@@ -39,9 +39,9 @@
 
             if (window["WebSocket"]) {
                 const params = window.location.href.split("/");
-                const roomId = params[params.length - 1];
-                        const uri = "wss://" + document.location.host + "/ws/" + roomId;
-                        console.log(uri);
+                const listId = params[params.length - 1];
+                const uri = "ws://" + document.location.host + "/ws/" + listId;
+                console.log(uri);
                 conn = new WebSocket(uri);
                 conn.onclose = function (evt) {
                     let item = document.createElement("div");
