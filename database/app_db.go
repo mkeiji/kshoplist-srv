@@ -7,9 +7,9 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -20,28 +20,33 @@ type AppDb struct{}
 
 func (this AppDb) Init() {
 	var (
-		dbUser = os.Getenv("DB_USER")
-		dbPass = os.Getenv("DB_PASS")
-		dbName = os.Getenv("DB_NAME")
-		dbHost = os.Getenv("DB_HOST")
-		dbAddr = fmt.Sprintf(
-			"%v:%v@tcp(%v)/%v?charset=utf8&parseTime=True&loc=Local",
+		dbUser       = os.Getenv("DB_USER")
+		dbPass       = os.Getenv("DB_PASS")
+		dbName       = os.Getenv("DB_NAME")
+		dbHost       = os.Getenv("DB_HOST")
+		dbPort       = os.Getenv("DB_PORT")
+		dbAddr       = fmt.Sprintf(
+			"postgres://%v:%v@%v:%v/%v?sslmode=disable",
 			dbUser,
 			dbPass,
 			dbHost,
+			dbPort,
 			dbName,
 		)
-		migrationDir = flag.String("migration.files", "./database/migrations", "Directory where the migration files are located ?")
-		mysqlDSN     = flag.String("mysql.dsn", dbAddr, "Mysql DSN")
+		migrationDir = flag.String("migration.files", "./database/migrations", "Directory where the migration files are located")
+		pgDSN        = flag.String("postgres.dsn", dbAddr, "PostgreSQL DSN")
 	)
-	// dbAddr: "root:secret@tcp(localhost)/testdb"
+
+    fmt.Print("*** KDEBUG ***")
+    fmt.Print(dbAddr)
+    fmt.Print("*** KDEBUG ***")
 
 	flag.Parse()
 
 	var dbErr error
-	Db, dbErr = sql.Open("mysql", *mysqlDSN)
+	Db, dbErr = sql.Open("postgres", *pgDSN)
 	if dbErr != nil {
-		log.Fatalf("could not connect to the MySQL database... %v", dbErr)
+		log.Fatalf("could not connect to the PostgreSQL database... %v", dbErr)
 	}
 
 	if err := Db.Ping(); err != nil {
@@ -49,14 +54,14 @@ func (this AppDb) Init() {
 	}
 
 	// Run migrations
-	driver, err := mysql.WithInstance(Db, &mysql.Config{})
+	driver, err := postgres.WithInstance(Db, &postgres.Config{})
 	if err != nil {
 		log.Fatalf("could not start sql migration... %v", err)
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
-		fmt.Sprintf("file://%s", *migrationDir), // file://path/to/directory
-		"mysql",
+		fmt.Sprintf("file://%s", *migrationDir),
+		"postgres",
 		driver,
 	)
 
@@ -71,3 +76,4 @@ func (this AppDb) Init() {
 		log.Println("Database migrated")
 	}
 }
+

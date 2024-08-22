@@ -19,7 +19,7 @@ func NewItemRepository() ItemRepository {
 func (this ItemRepository) GetAll() []models.Item {
 	var items []models.Item
 
-	res, err := this.Db.Query("select * from Items")
+	res, err := this.Db.Query("SELECT * FROM Items")
 	defer res.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -51,18 +51,14 @@ func (this ItemRepository) GetAll() []models.Item {
 }
 
 func (this ItemRepository) Post(item models.Item) {
-	stmt, err := this.Db.Prepare("INSERT INTO Items (StoreID, Name) VALUES (?, ?)")
+	stmt, err := this.Db.Prepare("INSERT INTO Items (StoreID, Name) VALUES ($1, $2) RETURNING id")
 	defer stmt.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	res, err := stmt.Exec(item.StoreId, item.Name)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	newItemId, err := res.LastInsertId()
+	var newItemId int
+	err = stmt.QueryRow(item.StoreId, item.Name).Scan(&newItemId)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -71,7 +67,7 @@ func (this ItemRepository) Post(item models.Item) {
 }
 
 func (this ItemRepository) Put(item models.Item) {
-	query := "UPDATE Items SET Name=? WHERE ID=?"
+	query := "UPDATE Items SET Name=$1 WHERE ID=$2"
 	stmt, err := this.Db.Prepare(query)
 	defer stmt.Close()
 	if err != nil {
@@ -87,7 +83,7 @@ func (this ItemRepository) Put(item models.Item) {
 }
 
 func (this ItemRepository) Delete(item models.Item) {
-	stmt, err := this.Db.Prepare("DELETE FROM Items WHERE (ID = ?)")
+	stmt, err := this.Db.Prepare("DELETE FROM Items WHERE ID = $1")
 	defer stmt.Close()
 	if err != nil {
 		log.Fatal(err)

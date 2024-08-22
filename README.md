@@ -2,11 +2,22 @@
 Server-side implementation of [gorilla-websocket](https://github.com/gorilla/websocket) for [kshoplist](https://github.com/mkeiji/kshoplist) 
 
 ### Start dev database
-`make mysql`
+`make testdb`
 
 ### Start local db client (optional)
 `make adminer`
 > NOTE: use a client like dbeaver / datagrip if you prefer
+
+### Set environment variables
+for local dev:
+```yaml
+DB_USER=root
+DB_PASS=secret
+DB_NAME=testdb
+DB_HOST=localhost
+DB_PORT=5432
+PORT=8081
+```
 
 ### Start the server
 `go run main.go`
