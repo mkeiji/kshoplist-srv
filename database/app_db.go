@@ -37,10 +37,6 @@ func (this AppDb) Init() {
 		pgDSN        = flag.String("postgres.dsn", dbAddr, "PostgreSQL DSN")
 	)
 
-    fmt.Print("*** KDEBUG ***")
-    fmt.Print(dbAddr)
-    fmt.Print("*** KDEBUG ***")
-
 	flag.Parse()
 
 	var dbErr error
