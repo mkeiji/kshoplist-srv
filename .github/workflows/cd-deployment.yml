@@ -16,4 +16,5 @@ jobs:
                   host: ${{ secrets.K_SERVER }}
                   username: ${{ secrets.K_USER }}
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  port: ${{ secrets.PORT }}
                   script: ${{ secrets.DEPLOYMENT_SCRIPT }}
